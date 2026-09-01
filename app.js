@@ -1012,9 +1012,29 @@
     }
   });
 
-  function resetDetail(){$("detailPanel").innerHTML=`<div class="empty-detail"><div class="empty-icon">⌕</div><h2>Pick an item or mob</h2><p>Items show drop sources and stats.<br>Mobs show grouped loot.</p></div>`}
-  ["searchInput","typeFilter","sourceFilter","classFilter","slotFilter","levelFilter","zoneFilter"].forEach(id=>$(id).addEventListener(id==="searchInput"?"input":"change",()=>{runSearch();if(selected?.kind==="mob")renderMob(mobById.get(selected.id))}));
-  updateFavoriteCount();
-  runSearch();
-  setMode("browse");
+function resetDetail(){$("detailPanel").innerHTML=`<div class="empty-detail"><div class="empty-icon">⌕</div><h2>Pick an item or mob</h2><p>Items show drop sources and stats.<br>Mobs show grouped loot.</p></div>`}
+
+["searchInput","typeFilter","sourceFilter","classFilter","slotFilter","levelFilter","zoneFilter"].forEach(id=>
+  $(id).addEventListener(id==="searchInput"?"input":"change",()=>{
+    runSearch();
+    if(selected?.kind==="mob")renderMob(mobById.get(selected.id));
+  })
+);
+
+// Close the mobile keyboard when the user taps Search/Enter
+$("searchInput").addEventListener("keydown",e=>{
+  if(e.key==="Enter"){
+    e.preventDefault();
+    e.currentTarget.blur();
+  }
+});
+
+// Also handles the native search action on mobile browsers
+$("searchInput").addEventListener("search",e=>{
+  e.currentTarget.blur();
+});
+
+updateFavoriteCount();
+runSearch();
+setMode("browse");
 })();

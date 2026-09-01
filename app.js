@@ -960,7 +960,7 @@
           ? renderDochGulSetPanel(item.dochgulClass,item.id)
           : ""}
       ${rel.length?`<div class="section-title">Related items</div><div class="related">${rel.map(x=>`<button type="button" class="link-btn entity-link" data-kind="item" data-id="${x.id}"><div class="link-main"><span>${esc(x.name)}</span><span>${esc(x.rarity||"")}</span></div><div class="link-sub">${[x.stats?.slot,x.stats?.levelReq?`Lv ${x.stats.levelReq}`:null].filter(Boolean).join(" • ")}</div></button>`).join("")}</div>`:""}
-      ${droppers.length?`<div class="section-title">Dropped by</div><div class="link-list">${droppers.map(m=>`<button type="button" class="link-btn entity-link" data-kind="mob" data-id="${m.id}"><div class="link-main"><span>${esc(m.name)}</span><span>Lv ${m.level??"?"}</span></div><div class="link-sub">${esc(zoneText(m))}</div></button>`).join("")}</div>`:""}`;
+      ${droppers.length?`<div class="section-title">Dropped by</div><div class="link-list">${droppers.map(m=>`<button type="button" class="link-btn entity-link dropper-mob-stat-link" data-kind="mob" data-id="${m.id}"><div class="link-main"><span>${esc(m.name)}</span><span>Lv ${mobStatsById.get(m.id)?.level ?? m.level ?? "?"}</span></div><div class="link-sub">${esc(zoneText(m))}</div></button>`).join("")}</div>`:""}`;
   }
 
   const slotOrder=["Head","Torso","Hands","Legs","Feet","Weapon","Quiver","Necklace","Charm","Bracelet","Ring","Other"];
@@ -1536,6 +1536,22 @@
     if(e.target.matches(".boss-loot-class,.boss-loot-rarity"))filterBossLoot(e.target.closest(".boss-loot-browser"));
   });
   document.addEventListener("click",e=>{
+    const dropper=e.target.closest(".dropper-mob-stat-link");
+    if(dropper){
+      const id=Number(dropper.dataset.id);
+      if(mobStatsById.has(id)){
+        // Make the Mob Stats list and detail panel agree on the selected mob.
+        $("mobStatsSearch").value=String(id);
+        ["mobStatsLevel","mobStatsStars","mobStatsOpinion","mobStatsZone"].forEach(fid=>$(fid).value="");
+        setMode("mobstats");
+        renderMobStatsResults();
+        renderMobStatsDetail(id);
+        const resultButton=document.querySelector(`#mobStatsResults [data-mob-stat-id="${id}"]`);
+        if(resultButton)resultButton.scrollIntoView({block:"nearest"});
+      }
+      return;
+    }
+
     const expand=e.target.closest(".boss-loot-expand");
     if(expand){
       expand.closest(".boss-loot-browser")?.querySelectorAll(".boss-loot-group:not([hidden])").forEach(x=>x.open=true);

@@ -128,6 +128,25 @@
     if(b)openGuide(b.dataset.guide);
   });
 
+  $("guideDetail").addEventListener("click",e=>{
+    const back=e.target.closest(".back-guide-btn");
+    if(back){
+      openGuide(back.dataset.guide||activeGuideId);
+      return;
+    }
+
+    const link=e.target.closest(".entity-link");
+    if(!link)return;
+    const kind=link.dataset.kind;
+    const id=Number(link.dataset.id);
+    if(!kind||!Number.isFinite(id))return;
+
+    // Keep guide navigation inside the Quest Guides detail panel so
+    // "View set", individual set pieces, and related guide items work
+    // without kicking the user over to the main Items & Loot page.
+    openEntity(kind,id,"guideDetail");
+  });
+
   function currentFilters(){
     return {q:norm($("searchInput").value),type:$("typeFilter").value,source:$("sourceFilter").value,cls:$("classFilter").value,slot:$("slotFilter").value,level:Number($("levelFilter").value||0),zone:$("zoneFilter").value};
   }

@@ -1,6 +1,8 @@
 (() => {
   const data=window.LOOT_DATA, mobs=data.mobs, items=data.items;
+  const mobStats=Array.isArray(window.MOB_STATS)?window.MOB_STATS:[];
   const mobById=new Map(mobs.map(x=>[x.id,x])), itemById=new Map(items.map(x=>[x.id,x]));
+  const mobStatsById=new Map(mobStats.map(x=>[x.id,x]));
   const $=id=>document.getElementById(id);
   let selected=null,currentResults=[],currentMode="browse";
   const FAVORITES_KEY="celticHeroesLootExplorerFavoritesV1";
@@ -48,7 +50,7 @@
     </button>`;
   }
 
-  $("datasetStat").textContent=`${items.length.toLocaleString()} items • ${mobs.length.toLocaleString()} mobs`;
+  $("datasetStat").textContent=`${items.length.toLocaleString()} items • ${mobStats.length.toLocaleString()} mob records`;
 
   const zones=[...new Set(mobs.flatMap(m=>m.zones||[]))].filter(Boolean).sort((a,b)=>a.localeCompare(b));
   $("zoneFilter").insertAdjacentHTML("beforeend",zones.map(z=>`<option value="${esc(z)}">${esc(z)}</option>`).join(""));
@@ -75,14 +77,17 @@
 
   function setMode(mode){
     currentMode=mode;
-    const browse=mode==="browse", guides=mode==="guides", favs=mode==="favorites";
+    const browse=mode==="browse", mobstats=mode==="mobstats", guides=mode==="guides", favs=mode==="favorites";
     $("browseTab").classList.toggle("active",browse);
+    $("mobStatsTab").classList.toggle("active",mobstats);
     $("guidesTab").classList.toggle("active",guides);
     $("favoritesTab").classList.toggle("active",favs);
     $("searchPanel").hidden=!browse;
     $("browseLayout").hidden=!browse;
+    $("mobStatsLayout").hidden=!mobstats;
     $("guidesLayout").hidden=!guides;
     $("favoritesLayout").hidden=!favs;
+    if(mobstats)renderMobStatsResults();
     if(guides)renderGuideList();
     if(favs)renderFavorites();
   }
@@ -109,6 +114,7 @@
   }
 
   $("browseTab").addEventListener("click",()=>setMode("browse"));
+  $("mobStatsTab").addEventListener("click",()=>setMode("mobstats"));
   $("guidesTab").addEventListener("click",()=>setMode("guides"));
   $("favoritesTab").addEventListener("click",()=>setMode("favorites"));
   $("guideList").addEventListener("click",e=>{
@@ -1012,29 +1018,200 @@
     }
   });
 
-function resetDetail(){$("detailPanel").innerHTML=`<div class="empty-detail"><div class="empty-icon">⌕</div><h2>Pick an item or mob</h2><p>Items show drop sources and stats.<br>Mobs show grouped loot.</p></div>`}
 
-["searchInput","typeFilter","sourceFilter","classFilter","slotFilter","levelFilter","zoneFilter"].forEach(id=>
-  $(id).addEventListener(id==="searchInput"?"input":"change",()=>{
-    runSearch();
-    if(selected?.kind==="mob")renderMob(mobById.get(selected.id));
-  })
-);
+  // ---------- Mob Stats ----------
+  const mobStatZones=[...new Set(mobStats.flatMap(m=>(m.spawns||[]).map(s=>s.zone).filter(Boolean)))].sort((a,b)=>a.localeCompare(b));
+  $("mobStatsZone").insertAdjacentHTML("beforeend",mobStatZones.map(z=>`<option value="${esc(z)}">${esc(z)}</option>`).join(""));
 
-// Close the mobile keyboard when the user taps Search/Enter
-$("searchInput").addEventListener("keydown",e=>{
-  if(e.key==="Enter"){
-    e.preventDefault();
-    e.currentTarget.blur();
+  function fmtMobNum(v){
+    if(v===null||v===undefined||v==="")return "—";
+    const n=Number(v);
+    return Number.isFinite(n)?n.toLocaleString():esc(v);
   }
-});
+  function fmtMobResist(v){
+    return Number(v)===-1?"Immune":fmtMobNum(v);
+  }
+  function fmtMobSeconds(v){
+    if(v===null||v===undefined)return "—";
+    let s=Math.max(0,Number(v)||0);
+    if(s>=86400){
+      const d=Math.floor(s/86400),h=Math.floor((s%86400)/3600);
+      return h?`${d}d ${h}h`:`${d}d`;
+    }
+    if(s>=3600){
+      const h=Math.floor(s/3600),m=Math.floor((s%3600)/60);
+      return m?`${h}h ${m}m`:`${h}h`;
+    }
+    if(s>=60){
+      const m=Math.floor(s/60),r=Math.floor(s%60);
+      return r?`${m}m ${r}s`:`${m}m`;
+    }
+    return `${Math.floor(s)}s`;
+  }
+  function mobStatsFilters(){
+    return {
+      q:norm($("mobStatsSearch").value),
+      level:Number($("mobStatsLevel").value||0),
+      stars:Number($("mobStatsStars").value||0),
+      opinion:norm($("mobStatsOpinion").value),
+      zone:$("mobStatsZone").value
+    };
+  }
+  function renderMobStatsResults(){
+    const f=mobStatsFilters();
+    let out=mobStats.filter(m=>{
+      if(f.q && !norm(m.name).includes(f.q) && String(m.id)!==f.q)return false;
+      if(f.level && Number(m.level||0)<f.level)return false;
+      if(f.stars && Number(m.stars||0)!==f.stars)return false;
+      if(f.opinion && norm(m.opinion)!==f.opinion)return false;
+      if(f.zone && !(m.spawns||[]).some(s=>s.zone===f.zone))return false;
+      return true;
+    });
+    out.sort((a,b)=>{
+      const aq=norm(a.name),bq=norm(b.name);
+      const ap=f.q&&(aq.startsWith(f.q)||String(a.id)===f.q)?0:1;
+      const bp=f.q&&(bq.startsWith(f.q)||String(b.id)===f.q)?0:1;
+      return ap-bp || (Number(b.level||0)-Number(a.level||0)) || aq.localeCompare(bq);
+    });
+    const total=out.length;
+    out=out.slice(0,250);
+    $("mobStatsCount").textContent=`${total.toLocaleString()} match${total===1?"":"es"}${total>250?" • first 250 shown":""}`;
+    if(!out.length){
+      $("mobStatsResults").innerHTML=`<div class="empty-detail" style="padding:55px 15px"><h2>No matches</h2><p>Try clearing a filter or shortening the search.</p></div>`;
+      return;
+    }
+    $("mobStatsResults").innerHTML=out.map(m=>{
+      const zones=[...new Set((m.spawns||[]).map(s=>s.zone).filter(Boolean))];
+      const sub=[
+        m.level!==null&&m.level!==undefined?`Lv ${m.level}`:null,
+        m.stars?`${m.stars}★`:null,
+        m.opinion?String(m.opinion).replace(/^./,c=>c.toUpperCase()):null,
+        zones.length?zones.slice(0,2).join(", "):null
+      ].filter(Boolean).join(" • ");
+      return `<button class="result mob-stat-result" type="button" data-mob-stat-id="${m.id}">
+        <div class="result-top"><span class="result-name">${esc(m.name)}</span><span class="badge mob">MOB</span></div>
+        <div class="result-sub">${esc(sub)}</div>
+      </button>`;
+    }).join("");
+  }
 
-// Also handles the native search action on mobile browsers
-$("searchInput").addEventListener("search",e=>{
-  e.currentTarget.blur();
-});
+  function mobStatRows(rows, valueFormatter=fmtMobNum){
+    return `<div class="stat-grid">${rows.map(([label,value])=>
+      `<div class="stat-row"><span>${esc(label)}</span><strong>${valueFormatter(value)}</strong></div>`
+    ).join("")}</div>`;
+  }
 
-updateFavoriteCount();
-runSearch();
-setMode("browse");
+  function damageResistRows(m){
+    const labels=[
+      ["Pierce","pierce"],["Slash","slash"],["Crush","crush"],["Heat","heat"],["Cold","cold"],
+      ["Magic","magic"],["Poison","poison"],["Divine","divine"],["Chaos","chaos"],["True","true"]
+    ];
+    return `<div class="damage-resist-grid">${labels.map(([label,key])=>
+      `<div class="damage-resist-row">
+        <span>${label}</span>
+        <strong>${fmtMobNum(m.damage?.[key])}</strong>
+        <strong>${fmtMobResist(m.resist?.[key])}</strong>
+      </div>`
+    ).join("")}</div>`;
+  }
+
+  function renderMobStatsDetail(id){
+    const m=mobStatsById.get(Number(id)); if(!m)return;
+    const lootMob=mobById.get(Number(id));
+    const zones=[...new Set((m.spawns||[]).map(s=>s.zone).filter(Boolean))];
+    const spawnRows=(m.spawns||[]).map((s,i)=>{
+      const same=s.min===s.max;
+      const timer=same?fmtMobSeconds(s.min):`${fmtMobSeconds(s.min)} – ${fmtMobSeconds(s.max)}`;
+      const coords=(s.x!==undefined&&s.z!==undefined)?`<div class="muted">Coords: ${fmtMobNum(s.x)}, ${fmtMobNum(s.y)}, ${fmtMobNum(s.z)}</div>`:"";
+      return `<div class="quest-req"><strong>${esc(s.zone||`Spawn ${i+1}`)}</strong><br>Respawn: ${timer}${coords}</div>`;
+    }).join("");
+
+    const ev=m.evasions||{};
+    const drops=lootMob?.drops||[];
+    const dropPreview=drops.slice(0,30).map(d=>{
+      const item=itemById.get(d.itemId);
+      return item?`<button type="button" class="link-btn entity-link mob-stat-item-link" data-kind="item" data-id="${item.id}">
+        <div class="link-main"><span>${esc(item.name)}</span><span>${esc(item.rarity||"")}</span></div>
+        <div class="link-sub">Item ID ${item.id}</div>
+      </button>`:"";
+    }).join("");
+
+    $("mobStatsDetail").innerHTML=`
+      <div class="detail-kicker">Mob Stats</div>
+      <h2 class="detail-title">${esc(m.name)}</h2>
+      <div class="meta">
+        <span>Mob ID ${m.id}</span>
+        ${m.level!==null&&m.level!==undefined?`<span>Lv ${fmtMobNum(m.level)}</span>`:""}
+        ${m.stars?`<span>${fmtMobNum(m.stars)}★</span>`:""}
+        ${m.opinion?`<span>${esc(String(m.opinion).replace(/^./,c=>c.toUpperCase()))}</span>`:""}
+        ${zones.map(z=>`<span>${esc(z)}</span>`).join("")}
+      </div>
+
+      <div class="section-title">General Stats</div>
+      ${mobStatRows([
+        ["Level",m.level],["Stars",m.stars],["HP",m.health],["Energy",m.energy],
+        ["Attack",m.attack],["Defence",m.defence],["Attack Speed",m.attackSpeed],
+        ["XP",m.xp],["Gold Min",m.goldMin],["Gold Max",m.goldMax]
+      ])}
+
+      <div class="section-title">Combat & Behaviour</div>
+      ${mobStatRows([
+        ["Radius",m.radius??m.range],["Attack Range",m.attackRange],["Missile Speed",m.missileSpeed],
+        ["Follow Range",m.followRange],["Fishing Damage",m.fishingDamage]
+      ])}
+
+      <div class="section-title">Damage / Resistance</div>
+      <div class="damage-resist-head"><span>Type</span><strong>Damage</strong><strong>Resist</strong></div>
+      ${damageResistRows(m)}
+      <div class="muted mob-stat-note">“Immune” represents a resistance value of -1 in the game data.</div>
+
+      <div class="section-title">Evasions</div>
+      ${mobStatRows([
+        ["Physical",ev.physical],["Spell",ev.spell],["Movement",ev.movement],
+        ["Wounding",ev.wounding],["Weakening",ev.weakening],["Mental",ev.mental]
+      ])}
+
+      <div class="section-title">Spawn Information</div>
+      ${spawnRows?`<div class="quest-summary">${spawnRows}</div>`:`<div class="notice">No spawn records are currently mapped for this mob.</div>`}
+
+      <div class="section-title">Known Loot</div>
+      ${drops.length
+        ? `<div class="link-list">${dropPreview}</div>${drops.length>30?`<div class="notice">${drops.length.toLocaleString()} loot entries are mapped in Items & Loot. Showing the first 30 here.</div>`:""}`
+        : `<div class="notice">No loot entries are currently linked to this mob in the Items & Loot dataset.</div>`}
+    `;
+  }
+
+  $("mobStatsResults").addEventListener("click",e=>{
+    const b=e.target.closest("[data-mob-stat-id]");
+    if(b)renderMobStatsDetail(Number(b.dataset.mobStatId));
+  });
+  $("mobStatsDetail").addEventListener("click",e=>{
+    const b=e.target.closest(".mob-stat-item-link");
+    if(!b)return;
+    setMode("browse");
+    openEntity("item",Number(b.dataset.id));
+  });
+  ["mobStatsSearch","mobStatsLevel","mobStatsStars","mobStatsOpinion","mobStatsZone"].forEach(id=>{
+    $(id).addEventListener(id==="mobStatsSearch"?"input":"change",renderMobStatsResults);
+  });
+  $("clearMobStatsBtn").addEventListener("click",()=>{
+    ["mobStatsSearch","mobStatsLevel","mobStatsStars","mobStatsOpinion","mobStatsZone"].forEach(id=>$(id).value="");
+    renderMobStatsResults();
+  });
+  $("mobStatsSearch").addEventListener("keydown",e=>{
+    if(e.key==="Enter"){e.preventDefault();e.currentTarget.blur();}
+  });
+  $("mobStatsSearch").addEventListener("search",e=>e.currentTarget.blur());
+
+  function resetDetail(){$("detailPanel").innerHTML=`<div class="empty-detail"><div class="empty-icon">⌕</div><h2>Pick an item or mob</h2><p>Items show drop sources and stats.<br>Mobs show grouped loot.</p></div>`}
+  ["searchInput","typeFilter","sourceFilter","classFilter","slotFilter","levelFilter","zoneFilter"].forEach(id=>$(id).addEventListener(id==="searchInput"?"input":"change",()=>{runSearch();if(selected?.kind==="mob")renderMob(mobById.get(selected.id))}));
+  // Close the mobile keyboard when Search/Enter is pressed.
+  $("searchInput").addEventListener("keydown",e=>{
+    if(e.key==="Enter"){e.preventDefault();e.currentTarget.blur();}
+  });
+  $("searchInput").addEventListener("search",e=>e.currentTarget.blur());
+
+  updateFavoriteCount();
+  runSearch();
+  setMode("browse");
 })();

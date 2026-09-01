@@ -1325,12 +1325,42 @@
     kind==="item"?renderItem(itemById.get(id),"favoritesDetail"):renderMob(mobById.get(id),"favoritesDetail");
   });
 
+  let clearFavoritesConfirmUntil=0;
+  
   $("clearFavoritesBtn").addEventListener("click",()=>{
     if(!favorites.size)return;
-    if(confirm("Clear all saved favorites on this device?")){
-      favorites.clear();saveFavorites();renderFavorites();
-      $("favoritesDetail").innerHTML=`<div class="empty-detail"><div class="empty-icon">★</div><h2>Your saved gear</h2><p>Star items or mobs while browsing to keep them here.</p></div>`;
+  
+    const btn=$("clearFavoritesBtn");
+    const now=Date.now();
+  
+    if(now>clearFavoritesConfirmUntil){
+      clearFavoritesConfirmUntil=now+5000;
+      btn.textContent="Click again to confirm";
+  
+      setTimeout(()=>{
+        if(Date.now()>=clearFavoritesConfirmUntil){
+          btn.textContent="Clear favorites";
+        }
+      },5100);
+  
+      return;
     }
+  
+    clearFavoritesConfirmUntil=0;
+  
+    favorites.clear();
+    saveFavorites();
+    renderFavorites();
+  
+    btn.textContent="Clear favorites";
+  
+    $("favoritesDetail").innerHTML=`
+      <div class="empty-detail">
+        <div class="empty-icon">★</div>
+        <h2>Your saved gear</h2>
+        <p>Star items or mobs while browsing to keep them here.</p>
+      </div>
+    `;
   });
 
 

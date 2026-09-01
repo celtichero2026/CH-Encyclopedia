@@ -1394,7 +1394,7 @@ html.discord-activity .mob-search-panel{
 .boss-loot-summary{
   display:flex;gap:8px 14px;align-items:baseline;flex-wrap:wrap;
   margin:0 0 10px;padding:10px 12px;border:1px solid var(--border);
-  border-radius:10px;background:#0e1723
+  border-radius:10px;background:var(--panel2)
 }
 .boss-loot-controls{
   display:grid;grid-template-columns:minmax(220px,2fr) minmax(130px,1fr) minmax(130px,1fr);
@@ -1405,7 +1405,7 @@ html.discord-activity .mob-search-panel{
   font-size:11px;color:var(--muted)
 }
 .boss-loot-controls input,.boss-loot-controls select{
-  width:100%;min-width:0;background:#0b1320;color:var(--text);
+  width:100%;min-width:0;background:var(--panel);color:var(--text);
   border:1px solid var(--border);border-radius:9px;padding:9px 10px
 }
 .boss-loot-actions{
@@ -1415,7 +1415,7 @@ html.discord-activity .mob-search-panel{
 .boss-loot-actions>div{display:flex;gap:6px;flex-wrap:wrap}
 .boss-loot-groups{display:grid;gap:7px}
 .boss-loot-group{
-  border:1px solid var(--border);border-radius:10px;background:#0e1723;
+  border:1px solid var(--border);border-radius:10px;background:var(--panel2);
   overflow:hidden
 }
 .boss-loot-group>summary{
@@ -1450,4 +1450,30 @@ html.discord-activity .mob-search-panel{
   .boss-loot-controls{grid-template-columns:1fr}
   .boss-loot-search{grid-column:auto}
   .boss-loot-actions{align-items:flex-start;flex-direction:column}
+}
+
+
+/* v1.8.7 — Purple theme alignment for condensed loot browser */
+.boss-loot-summary,
+.boss-loot-group{
+  background:var(--panel2);
+}
+.boss-loot-controls input,
+.boss-loot-controls select{
+  background:var(--panel);
+  border-color:var(--border);
+}
+.boss-loot-controls input:focus,
+.boss-loot-controls select:focus{
+  border-color:var(--accent);
+}
+.boss-loot-group[open] > summary{
+  background:var(--panel3);
+}
+.boss-loot-group > summary:hover{
+  background:var(--panel3);
+}
+.boss-loot-group-count{
+  background:var(--panel);
+  color:var(--accent2);
 }

@@ -1232,6 +1232,97 @@
     ).join("")}</div>`;
   }
 
+
+  function renderMobStatsLoot(drops,targetId="mobStatsDetail"){
+    if(!drops.length)return `<div class="notice">No loot entries are currently linked to this mob in the Items & Loot dataset.</div>`;
+
+    const mapped=drops.map(d=>({...d,item:itemById.get(d.itemId)})).filter(d=>d.item);
+    if(!mapped.length)return `<div class="notice">No loot entries are currently linked to this mob in the Items & Loot dataset.</div>`;
+
+    const groups=new Map();
+    for(const d of mapped){
+      const slot=d.item.stats?.slot||"Other";
+      if(!groups.has(slot))groups.set(slot,[]);
+      groups.get(slot).push(d);
+    }
+    for(const arr of groups.values()){
+      arr.sort((a,b)=>((a.item.rarity||"").localeCompare(b.item.rarity||""))||a.item.name.localeCompare(b.item.name));
+    }
+    const ordered=[...groups.keys()].sort((a,b)=>
+      (slotOrder.indexOf(a)<0?99:slotOrder.indexOf(a))-(slotOrder.indexOf(b)<0?99:slotOrder.indexOf(b))||a.localeCompare(b)
+    );
+
+    const card=d=>`
+      <button type="button"
+        class="link-btn entity-link boss-loot-item mob-stat-item-link"
+        data-kind="item"
+        data-id="${d.item.id}"
+        data-target="${esc(targetId)}"
+        data-loot-name="${esc(norm(d.item.name))}"
+        data-loot-class="${esc(norm(d.item.stats?.classReq||""))}"
+        data-loot-rarity="${esc(norm(d.item.rarity||""))}">
+        <div class="link-main"><span>${esc(d.item.name)}</span><span>${esc(d.item.rarity||"")}</span></div>
+        <div class="link-sub">${[
+          d.item.stats?.classReq,
+          d.item.stats?.levelReq?`Lv ${d.item.stats.levelReq}`:null
+        ].filter(Boolean).join(" • ")}</div>
+      </button>`;
+
+    if(mapped.length<=20){
+      return ordered.map(slot=>`
+        <div class="drop-group">
+          <div class="drop-group-title">${esc(slot)} <span>${groups.get(slot).length}</span></div>
+          <div class="link-list">${groups.get(slot).map(card).join("")}</div>
+        </div>`).join("");
+    }
+
+    const classes=[...new Set(mapped.map(d=>d.item.stats?.classReq).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
+    const rarities=[...new Set(mapped.map(d=>d.item.rarity).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
+
+    return `
+      <div class="boss-loot-browser">
+        <div class="boss-loot-summary">
+          <strong>${mapped.length.toLocaleString()} known drops</strong>
+          <span class="muted">Large loot table — filter or expand only the slots you need.</span>
+        </div>
+
+        <div class="boss-loot-controls">
+          <label class="boss-loot-search">
+            <span>Find loot</span>
+            <input type="search" class="boss-loot-query" placeholder="Search this mob's drops..." autocomplete="off">
+          </label>
+          ${classes.length?`<label><span>Class</span><select class="boss-loot-class">
+            <option value="">All classes</option>
+            ${classes.map(x=>`<option value="${esc(norm(x))}">${esc(x)}</option>`).join("")}
+          </select></label>`:""}
+          ${rarities.length>1?`<label><span>Rarity</span><select class="boss-loot-rarity">
+            <option value="">All rarities</option>
+            ${rarities.map(x=>`<option value="${esc(norm(x))}">${esc(x)}</option>`).join("")}
+          </select></label>`:""}
+        </div>
+
+        <div class="boss-loot-actions">
+          <span class="muted boss-loot-match-count">${mapped.length.toLocaleString()} shown</span>
+          <div>
+            <button type="button" class="clear-btn boss-loot-expand">Expand all</button>
+            <button type="button" class="clear-btn boss-loot-collapse">Collapse all</button>
+          </div>
+        </div>
+
+        <div class="boss-loot-groups">
+          ${ordered.map(slot=>`
+            <details class="boss-loot-group" data-loot-slot="${esc(norm(slot))}">
+              <summary>
+                <span>${esc(slot)}</span>
+                <span class="boss-loot-group-count">${groups.get(slot).length}</span>
+              </summary>
+              <div class="boss-loot-grid">${groups.get(slot).map(card).join("")}</div>
+            </details>`).join("")}
+        </div>
+        <div class="notice boss-loot-empty" hidden>No loot matches those filters.</div>
+      </div>`;
+  }
+
   function renderMobStatsDetail(id){
     const m=mobStatsById.get(Number(id)); if(!m)return;
     const lootMob=mobById.get(Number(id));
@@ -1244,13 +1335,7 @@
 
     const ev=m.evasions||{};
     const drops=lootMob?.drops||[];
-    const dropPreview=drops.slice(0,30).map(d=>{
-      const item=itemById.get(d.itemId);
-      return item?`<button type="button" class="link-btn entity-link mob-stat-item-link" data-kind="item" data-id="${item.id}">
-        <div class="link-main"><span>${esc(item.name)}</span><span>${esc(item.rarity||"")}</span></div>
-        <div class="link-sub">Item ID ${item.id}</div>
-      </button>`:"";
-    }).join("");
+    const mobStatsLootHtml=renderMobStatsLoot(drops,"mobStatsDetail");
 
     $("mobStatsDetail").innerHTML=`
       <div class="detail-kicker">Mob Stats</div>
@@ -1291,9 +1376,7 @@
       ${spawnRows?`<div class="quest-summary">${spawnRows}</div>`:`<div class="notice">No spawn records are currently mapped for this mob.</div>`}
 
       <div class="section-title">Known Loot</div>
-      ${drops.length
-        ? `<div class="link-list">${dropPreview}</div>${drops.length>30?`<div class="notice">${drops.length.toLocaleString()} loot entries are mapped in Items & Loot. Showing the first 30 here.</div>`:""}`
-        : `<div class="notice">No loot entries are currently linked to this mob in the Items & Loot dataset.</div>`}
+      ${mobStatsLootHtml}
     `;
   }
 
@@ -1304,6 +1387,7 @@
   $("mobStatsDetail").addEventListener("click",e=>{
     const b=e.target.closest(".mob-stat-item-link");
     if(!b)return;
+    e.stopPropagation();
     setMode("browse");
     openEntity("item",Number(b.dataset.id));
   });

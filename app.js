@@ -147,7 +147,20 @@
   }
   function mobHasMatchingDrop(m,f){
     if(f.zone && !cleanZones(m.zones||[]).includes(f.zone))return false;
-    return m.drops.some(d=>{const i=itemById.get(d.itemId); if(!i)return false; const ff={...f,q:"",zone:""}; return itemMatches(i,ff)});
+
+    // Do not require a loot-table match just to make a mob visible.
+    // This keeps the full mob database searchable/browsable, including mobs
+    // with no mapped drops. Only item-specific filters should constrain mobs
+    // by their loot.
+    const hasItemFilters=!!(f.cls || f.slot || f.level);
+    if(!hasItemFilters)return true;
+
+    return (m.drops||[]).some(d=>{
+      const i=itemById.get(d.itemId);
+      if(!i)return false;
+      const ff={...f,q:"",zone:"",source:""};
+      return itemMatches(i,ff);
+    });
   }
 
   function runSearch(){
@@ -160,17 +173,21 @@
         if(out.length>=180)break;
       }
     }
-    if(f.type!=="items"&&out.length<180&&(!f.source||f.source==="mob")){
-      for(const m of mobs){
-        if(f.q && !norm(m.name).includes(f.q))continue;
-        if(!mobHasMatchingDrop(m,f))continue;
-        {
+    if(f.type!=="items"&&(!f.source||f.source==="mob")){
+      const room=Math.max(0,180-out.length);
+      if(room>0){
+        let added=0;
+        for(const m of mobs){
+          if(f.q && !norm(m.name).includes(f.q) && String(m.id)!==f.q)continue;
+          if(!mobHasMatchingDrop(m,f))continue;
           const ms=mobStatsById.get(m.id);
           const level=ms?.level ?? m.level ?? "?";
           const stars=(ms?.stars>=1 && ms?.stars<=6)?` • ${ms.stars}★`:"";
-          out.push({kind:"mob",id:m.id,name:m.name,sub:`Level ${level}${stars} • ${m.drops.length} drops • ${zoneText(m)}`});
+          const dropCount=(m.drops||[]).length;
+          out.push({kind:"mob",id:m.id,name:m.name,sub:`Level ${level}${stars} • ${dropCount} drop${dropCount===1?"":"s"} • ${zoneText(m)}`});
+          added++;
+          if(added>=room)break;
         }
-        if(out.length>=180)break;
       }
     }
     out.sort((a,b)=>{const aq=norm(a.name),bq=norm(b.name),ap=f.q&&aq.startsWith(f.q)?0:1,bp=f.q&&bq.startsWith(f.q)?0:1;return ap-bp||aq.localeCompare(bq)});
@@ -179,7 +196,12 @@
 
   function renderResults(q){
     $("resultsTitle").textContent=q?"Search results":"Browse";
-    $("resultCount").textContent=`${currentResults.length}${currentResults.length===180?"+":""} shown`;
+    const f=currentFilters();
+    if(f.type==="mobs" && !f.q && !f.cls && !f.slot && !f.level && !f.zone && (!f.source||f.source==="mob")){
+      $("resultCount").textContent=`${mobs.length.toLocaleString()} mobs • first ${currentResults.length.toLocaleString()} shown`;
+    }else{
+      $("resultCount").textContent=`${currentResults.length}${currentResults.length===180?"+":""} shown`;
+    }
     if(!currentResults.length){$("results").innerHTML=`<div class="empty-detail" style="padding:55px 15px"><h2>No matches</h2><p>Try clearing a filter or shortening the search.</p></div>`;return}
     $("results").innerHTML=currentResults.map(r=>`<div class="result-wrap ${selected&&selected.kind===r.kind&&selected.id===r.id?"active":""}">
       <button class="result" type="button" data-kind="${r.kind}" data-id="${r.id}">

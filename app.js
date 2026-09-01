@@ -1649,6 +1649,20 @@
     if(e.target.matches(".boss-loot-class,.boss-loot-rarity"))filterBossLoot(e.target.closest(".boss-loot-browser"));
   });
   document.addEventListener("click",e=>{
+    // Save/Favorite buttons can appear in multiple detail panels
+    // (Items & Loot, Mob Stats, Quest Guides, and Favorites).
+    // Handle them globally so dynamically-rendered detail views all work.
+    const favorite=e.target.closest(".favorite-btn");
+    if(favorite){
+      e.preventDefault();
+      e.stopPropagation();
+      toggleFavorite(
+        favorite.dataset.favoriteKind,
+        Number(favorite.dataset.favoriteId)
+      );
+      return;
+    }
+
     const dropper=e.target.closest(".dropper-mob-stat-link");
     if(dropper){
       const id=Number(dropper.dataset.id);

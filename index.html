@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Celtic Heroes CH Encyclopedia</title>
-  <link rel="stylesheet" href="style.css?v=1.7.2">
+  <link rel="stylesheet" href="style.css?v=1.8">
 </head>
 <body>
 <main class="app">
@@ -19,6 +19,7 @@
 
   <nav class="primary-nav" aria-label="Main sections">
     <button id="browseTab" class="nav-tab active" type="button">Items & Loot</button>
+    <button id="mobStatsTab" class="nav-tab" type="button">Mob Stats</button>
     <button id="guidesTab" class="nav-tab" type="button">Quest Guides</button>
     <button id="favoritesTab" class="nav-tab" type="button">★ Favorites <span id="favoriteCount" class="nav-count">0</span></button>
   </nav>
@@ -52,6 +53,77 @@
     <aside class="detail-panel" id="detailPanel">
       <div class="empty-detail"><div class="empty-icon">⌕</div><h2>Pick an item or mob</h2><p>Items show drop sources and stats.<br>Mobs show grouped loot.</p></div>
     </aside>
+  </section>
+
+
+  <section class="mob-stats-page" id="mobStatsLayout" hidden>
+    <section class="search-panel mob-search-panel">
+      <div class="filter-grid mob-filter-grid">
+        <label class="search-box">
+          <span>Search mobs</span>
+          <input id="mobStatsSearch" type="search" placeholder="Mob name or ID..." autocomplete="off">
+        </label>
+        <label>
+          <span>Minimum level</span>
+          <select id="mobStatsLevel">
+            <option value="">Any level</option>
+            <option value="50">50+</option>
+            <option value="100">100+</option>
+            <option value="150">150+</option>
+            <option value="180">180+</option>
+            <option value="200">200+</option>
+            <option value="210">210+</option>
+            <option value="220">220+</option>
+          </select>
+        </label>
+        <label>
+          <span>Stars</span>
+          <select id="mobStatsStars">
+            <option value="">Any</option>
+            <option value="1">1★</option>
+            <option value="2">2★</option>
+            <option value="3">3★</option>
+            <option value="4">4★</option>
+            <option value="5">5★</option>
+            <option value="6">6★</option>
+          </select>
+        </label>
+        <label>
+          <span>Opinion</span>
+          <select id="mobStatsOpinion">
+            <option value="">Any</option>
+            <option value="hostile">Hostile</option>
+            <option value="friendly">Friendly</option>
+            <option value="neutral">Neutral</option>
+          </select>
+        </label>
+        <label>
+          <span>Zone</span>
+          <select id="mobStatsZone"><option value="">All zones</option></select>
+        </label>
+      </div>
+      <div class="filter-foot">
+        <div class="muted mini-copy">Combat stats are extracted from the game data.</div>
+        <button id="clearMobStatsBtn" class="clear-btn" type="button">Clear filters</button>
+      </div>
+    </section>
+
+    <section class="layout mob-stats-layout">
+      <div class="results-panel">
+        <div class="results-head">
+          <h2>Mob Stats</h2>
+          <span id="mobStatsCount" class="muted"></span>
+        </div>
+        <div id="mobStatsResults" class="results"></div>
+      </div>
+      <aside class="detail-panel" id="mobStatsDetail">
+        <div class="empty-detail">
+          <div class="empty-icon">⚔</div>
+          <h2>Choose a mob</h2>
+          <p>View health, attack, damage, resistances, evasions, ranges, spawn information and known loot.</p>
+        </div>
+      </aside>
+    </section>
   </section>
 
   <section class="layout guides-layout" id="guidesLayout" hidden>
@@ -92,14 +164,15 @@
   </section>
 
   <footer class="app-footer">
-    <span>CH Encyclopedia v1.7.2</span>
+    <span>CH Encyclopedia v1.8</span>
     <span>Favorites are stored locally on this device.</span>
   <span class="footer-legal"><a href="terms.html">Terms</a> · <a href="privacy.html">Privacy</a></span></footer>
 </main>
-  <script src="data/base.js?v=1.7.2"></script>
-  <script src="data/items-01.js?v=1.7.2"></script>
-  <script src="data/items-02.js?v=1.7.2"></script>
-<script src="app.js?v=1.7.2"></script>
-  <script type="module" src="discord-activity.js?v=1.7.2"></script>
+  <script src="data/base.js?v=1.8"></script>
+  <script src="data/items-01.js?v=1.8"></script>
+  <script src="data/items-02.js?v=1.8"></script>
+  <script src="data/mobstats.js?v=1.8"></script>
+<script src="app.js?v=1.8"></script>
+  <script type="module" src="discord-activity.js?v=1.8"></script>
 </body>
 </html>

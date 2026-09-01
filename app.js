@@ -56,7 +56,7 @@
     </button>`;
   }
 
-  $("datasetStat").textContent=`${items.length.toLocaleString()} items • ${mobStats.length.toLocaleString()} mob records`;
+  $("datasetStat").textContent=`${items.length.toLocaleString()} items • ${mobs.length.toLocaleString()} loot mobs • ${mobStats.length.toLocaleString()} stat records`;
 
   const zones=cleanZones(mobs.flatMap(m=>m.zones||[])).sort((a,b)=>a.localeCompare(b));
   $("zoneFilter").insertAdjacentHTML("beforeend",zones.map(z=>`<option value="${esc(z)}">${esc(z)}</option>`).join(""));

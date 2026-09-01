@@ -1295,3 +1295,93 @@ html.discord-sdk-ready body::after{
   .legal-header{padding:14px}
   .legal-card h2{font-size:17px}
 }
+
+
+/* =========================================================
+   v1.8 — Mob Stats
+   ========================================================= */
+.mob-stats-page{
+  flex:1 1 auto;
+  min-height:0;
+  display:flex;
+  flex-direction:column;
+}
+.mob-stats-page[hidden]{display:none!important}
+.mob-search-panel{flex:0 0 auto}
+.mob-filter-grid{
+  grid-template-columns:minmax(240px,2fr) repeat(4,minmax(120px,1fr));
+}
+.mob-stats-layout{
+  flex:1 1 auto;
+  min-height:0;
+}
+.mob-stat-result{
+  width:calc(100% - 12px);
+  margin:5px 6px;
+  text-align:left;
+}
+.damage-resist-head,
+.damage-resist-row{
+  display:grid;
+  grid-template-columns:minmax(100px,1fr) minmax(90px,.75fr) minmax(90px,.75fr);
+  gap:10px;
+  align-items:center;
+}
+.damage-resist-head{
+  padding:0 12px 7px;
+  color:var(--muted);
+  font-size:11px;
+  text-transform:uppercase;
+  letter-spacing:.08em;
+}
+.damage-resist-head strong{text-align:right}
+.damage-resist-grid{
+  border:1px solid #453650;
+  border-radius:12px;
+  overflow:hidden;
+}
+.damage-resist-row{
+  padding:9px 12px;
+  border-bottom:1px solid #382c40;
+}
+.damage-resist-row:last-child{border-bottom:0}
+.damage-resist-row span{color:#cfc5d4}
+.damage-resist-row strong{text-align:right;color:#f1e6f5}
+.mob-stat-note{margin-top:7px;font-size:11px}
+
+@media(max-width:900px){
+  .mob-filter-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .mob-filter-grid .search-box{grid-column:1/-1}
+}
+@media(max-width:600px){
+  .mob-filter-grid{grid-template-columns:1fr 1fr}
+  .damage-resist-head,
+  .damage-resist-row{
+    grid-template-columns:1fr 84px 84px;
+    gap:7px;
+  }
+}
+html.discord-activity .mob-stats-page{
+  flex:1 1 auto;
+  min-height:0;
+  overflow:hidden;
+}
+html.discord-activity .mob-stats-layout{
+  flex:1 1 auto;
+  min-height:0;
+  overflow:hidden;
+  padding-bottom:58px;
+}
+html.discord-activity .mob-search-panel{
+  margin-bottom:9px;
+}
+@media(max-width:760px){
+  html.discord-activity .mob-stats-page{
+    overflow:visible;
+  }
+  html.discord-activity .mob-stats-layout{
+    overflow:visible;
+    display:block;
+    padding-bottom:72px;
+  }
+}

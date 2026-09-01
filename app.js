@@ -965,12 +965,106 @@
 
   const slotOrder=["Head","Torso","Hands","Legs","Feet","Weapon","Quiver","Necklace","Charm","Bracelet","Ring","Other"];
 
-  function buildHierarchicalLoot(groups, ordered, dropCard){
+
+  const bossTierNames=new Set([
+    "mordris",
+    "gelebron",
+    "dhiothu",
+    "bloodthorn the ravenous",
+    "bloodthorn"
+  ]);
+
+  function getBossTierForItem(mob,item){
+    if(!mob||!item)return null;
+    const boss=norm(mob.name);
+    if(!bossTierNames.has(boss))return null;
+
+    const slot=norm(item.stats?.slot||"");
+    const itemName=norm(item.name);
+
+    // Only apply the special raid-boss tier system to helms and weapons.
+    const isHelm=slot.includes("head")||slot.includes("helm");
+    const isWeapon=["weapon","main hand","mainhand","off hand","offhand"].some(x=>slot.includes(x));
+    if(!isHelm&&!isWeapon)return null;
+
+    // Dhiothu's unique named weapons sit above Void.
+    if(boss==="dhiothu"){
+      const namedPrefixes=["goibniu's","lugh's","nuada's","brigid's","dagda's","morrigan's","aed's","manannan's"];
+      if(namedPrefixes.some(x=>itemName.startsWith(x)))return "Named";
+    }
+
+    if(itemName.includes("void"))return "Void";
+    if(itemName.includes("shadow"))return "Shadow";
+    if(itemName.includes("dark"))return "Dark";
+    return null;
+  }
+
+  function bossTierRank(tier){
+    return ({Named:0,Void:1,Shadow:2,Dark:3})[tier] ?? 99;
+  }
+
+  function buildHierarchicalLoot(groups, ordered, dropCard, mob=null){
     return ordered.map(slot=>{
       const arr=groups.get(slot)||[];
 
-      // Extremely large slot groups get a second organizational level.
-      // Primary split: class requirement. Within each class: rarity.
+      // Special handling for raid-boss helms/weapons: organize by class, then
+      // player-facing boss tier (Named/Void/Shadow/Dark) instead of generic rarity.
+      const tiered=arr.filter(d=>getBossTierForItem(mob,d.item));
+      const useBossTiering=!!mob && tiered.length>0 && tiered.length===arr.length;
+
+      if(useBossTiering){
+        const classGroups=new Map();
+        for(const d of arr){
+          const cls=d.item.stats?.classReq||"All Classes";
+          if(!classGroups.has(cls))classGroups.set(cls,[]);
+          classGroups.get(cls).push(d);
+        }
+
+        const classOrder=[...classGroups.keys()].sort((a,b)=>{
+          if(a==="All Classes")return 1;
+          if(b==="All Classes")return -1;
+          return a.localeCompare(b);
+        });
+
+        return `
+          <details class="boss-loot-group boss-loot-slot-group" data-loot-slot="${esc(norm(slot))}">
+            <summary>
+              <span>${esc(slot)}</span>
+              <span class="boss-loot-group-count">${arr.length}</span>
+            </summary>
+            <div class="boss-loot-subgroups">
+              ${classOrder.map(cls=>{
+                const classItems=classGroups.get(cls);
+                const tierGroups=new Map();
+                for(const d of classItems){
+                  const tier=getBossTierForItem(mob,d.item)||"Other";
+                  if(!tierGroups.has(tier))tierGroups.set(tier,[]);
+                  tierGroups.get(tier).push(d);
+                }
+                const tierOrder=[...tierGroups.keys()].sort((a,b)=>bossTierRank(a)-bossTierRank(b)||a.localeCompare(b));
+                return `
+                  <details class="boss-loot-class-group">
+                    <summary>
+                      <span>${esc(cls)}</span>
+                      <span class="boss-loot-group-count">${classItems.length}</span>
+                    </summary>
+                    <div class="boss-loot-rarity-groups">
+                      ${tierOrder.map(tier=>`
+                        <details class="boss-loot-rarity-group boss-loot-tier-group">
+                          <summary>
+                            <span>${esc(tier)}</span>
+                            <span class="boss-loot-group-count">${tierGroups.get(tier).length}</span>
+                          </summary>
+                          <div class="boss-loot-grid">${tierGroups.get(tier).map(dropCard).join("")}</div>
+                        </details>`).join("")}
+                    </div>
+                  </details>`;
+              }).join("")}
+            </div>
+          </details>`;
+      }
+
+      // Generic large-slot handling for everything else.
       if(arr.length>30){
         const classGroups=new Map();
         for(const d of arr){
@@ -1139,7 +1233,7 @@
           </div>
 
           <div class="boss-loot-groups">
-            ${buildHierarchicalLoot(groups,ordered,dropCard)}
+            ${buildHierarchicalLoot(groups,ordered,dropCard,mob)}
           </div>
           <div class="notice boss-loot-empty" hidden>No loot matches those filters.</div>
         </div>`;
@@ -1318,7 +1412,7 @@
   }
 
 
-  function renderMobStatsLoot(drops,targetId="mobStatsDetail"){
+  function renderMobStatsLoot(drops,targetId="mobStatsDetail",mob=null){
     if(!drops.length)return `<div class="notice">No loot entries are currently linked to this mob in the Items & Loot dataset.</div>`;
 
     const mapped=drops.map(d=>({...d,item:itemById.get(d.itemId)})).filter(d=>d.item);
@@ -1395,7 +1489,7 @@
         </div>
 
         <div class="boss-loot-groups">
-          ${buildHierarchicalLoot(groups,ordered,card)}
+          ${buildHierarchicalLoot(groups,ordered,card,mob)}
         </div>
         <div class="notice boss-loot-empty" hidden>No loot matches those filters.</div>
       </div>`;
@@ -1413,7 +1507,7 @@
 
     const ev=m.evasions||{};
     const drops=lootMob?.drops||[];
-    const mobStatsLootHtml=renderMobStatsLoot(drops,"mobStatsDetail");
+    const mobStatsLootHtml=renderMobStatsLoot(drops,"mobStatsDetail",m);
 
     $("mobStatsDetail").innerHTML=`
       <div class="detail-kicker">Mob Stats</div>
